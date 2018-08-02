@@ -215,6 +215,11 @@ const single = (name, groups) =>
     (groups[name] ? getPrices([groups[name]]) :
     Promise.reject(`Do not have a group called ${name}. Try one of these: ${Object.keys(groups).reduce((a, b) => `${a}, ${b}`)}`));
 
+const formatResult = (result, groups) => result
+  .reduce((a, b) => a.concat(b), []) // Flatten
+  .sort((a, b) => getSortPriority(a, groups) - getSortPriority(b, groups))
+  .reduce((a, b) => `${a}\n\n${b}`);
+
 module.exports = (settings) => {
   const groups = settings.groups || DEFAULT_GROUPS;
   const init = (app) => {
@@ -227,10 +232,7 @@ module.exports = (settings) => {
       }
       query.then(prices => opts.bot.sendMessage({
         to: opts.channelId,
-        message: prices
-          .reduce((a, b) => a.concat(b), []) // Flatten
-          .sort((a, b) => getSortPriority(a, groups) - getSortPriority(b, groups))
-          .reduce((a, b) => `${a}\n\n${b}`),
+        message: formatResult(prices, groups),
       })).catch(err => {
         console.error(err);
         opts.bot.sendMessage({
@@ -243,7 +245,7 @@ module.exports = (settings) => {
     if (settings.dailyUpdateChannel && settings.dailyUpdateTime) {
       app.addCronTrigger(settings.dailyUpdateTime, bot => all(groups).then(prices => bot.sendMessage({
         to: settings.dailyUpdateChannel,
-        message: prices.reduce((a, b) => `${a}\n\n${b}`),
+        message: formatResult(prices, groups),
       })).catch(err => bot.sendMessage({
         to: settings.dailyUpdateChannel,
         message: `SCRIPT CRASH! ${err}`,
